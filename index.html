@@ -11,20 +11,32 @@
         <button onclick="move('left')">LEFT</button>
         <button onclick="move('right')">RIGHT</button>
         <hr>
-        ZOOM LEVEL
-        <button onclick="zoomLevel(240)">LARGE (4hours)</button>
-        <button onclick="zoomLevel(60)">MEDIUM (60min)</button>
-        <button onclick="zoomLevel(15)">SMALL (15min)</button>
-        <hr>
         ZOOM IN/OUT
         <button onclick="zoom('in')">IN</button>
         <button onclick="zoom('out')">OUT</button>
         <button onclick="zoomViewAll()">VIEW ALL</button>
         <hr>
-        CLOWN
-        <button onclick="zoom('in')">IN</button>
-        <button onclick="zoom('out')">OUT</button>
-        <button onclick="zoomViewAll()">VIEW ALL</button>
+        CLOWNS LIST:
+        <ul>
+            <li>clown A: <button onClick="addSession('clown A')">Add session</button></li>
+            <li>clown B: <button onClick="addSession('clown B')">Add session</button></li>
+            <li>clown C: <button onClick="addSession('clown C')">Add session</button></li>
+            <li>clown D: <button onClick="addSession('clown D')">Add session</button></li>
+            <li>clown E: <button onClick="addSession('clown E')">Add session</button></li>
+            <li>clown F: <button onClick="addSession('clown F')">Add session</button></li>
+            <li>clown X: <button onClick="addSession('clown X')">Add session</button></li>
+        </ul>
+        <hr>
+        CURRENT CLOWN SESSION SELECTION:
+        <div id="selection"></div>
+        <hr>
+        <p>
+            TODO<br>
+            - augment a session from the left.<br>
+            - improve minute display on x axis (more point+text).<br>
+            - add new session for specific clone > if already line add to it else create new line (update y axis).<br>
+            - have current session highlighted with border and infos elsewhere with NAME/START/STOP and btnRemove.<br>
+        </p>
         <script src="app.js"></script>
         <style>
             body {
@@ -32,6 +44,10 @@
             }
             .tick line{
                 opacity: 0.2;
+            }
+            .zone.active {
+                stroke: blue;
+                stroke-width: 1px;
             }
         </style>
     </body>
