@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="node_modules/d3/build/d3.min.js"></script>
+        <script src="node_modules/lodash/lodash.min.js"></script>
+    </head>
+    <body>
+        <div id="chart"></div>
+        <hr>
+        MOVE
+        <button onclick="move('left')">LEFT</button>
+        <button onclick="move('right')">RIGHT</button>
+        <hr>
+        ZOOM LEVEL
+        <button onclick="zoomLevel(240)">LARGE (4hours)</button>
+        <button onclick="zoomLevel(60)">MEDIUM (60min)</button>
+        <button onclick="zoomLevel(15)">SMALL (15min)</button>
+        <hr>
+        ZOOM IN/OUT
+        <button onclick="zoom('in')">IN</button>
+        <button onclick="zoom('out')">OUT</button>
+        <button onclick="zoomViewAll()">VIEW ALL</button>
+        <hr>
+        CLOWN
+        <button onclick="zoom('in')">IN</button>
+        <button onclick="zoom('out')">OUT</button>
+        <button onclick="zoomViewAll()">VIEW ALL</button>
+        <script src="app.js"></script>
+        <style>
+            body {
+                margin: 0;
+            }
+            .tick line{
+                opacity: 0.2;
+            }
+        </style>
+    </body>
+</html>
