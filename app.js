@@ -1,10 +1,13 @@
+//@ts-check
+
 const WIDTH = 800;
 const HEIGHT = 400;
 const BORDER = 50;
 const GAP = 60;
 
 let scaleX, scaleY, axisX, axisY;
-let svg, elMain, elContainer, elAxisX, elAxisY, elDateStartAll;
+let svg, elMain, elDragZone, elContainer, elAxisX, elAxisY, elDateStartAll;
+let currentSelectedSession = null;
 
 const dateStartAll = new Date();
 dateStartAll.setMinutes(dateStartAll.getMinutes() + 10);
@@ -24,8 +27,6 @@ let data = [
     {id: 9, name: 'clown X', start: nowPlusXMinutes(21), duration: 2 * 60},
 ];
 
-let currentSelectedSession = null;
-
 
 
 function buildDom() {
@@ -36,7 +37,7 @@ function buildDom() {
     scaleY = d3.scalePoint()
         .range([HEIGHT-BORDER*2, 0])
         .padding(.5)
-        .domain( _.uniq(_.map(data, 'name')).sort() );
+        .domain( getUniqClownList() );
     
     
     axisX = d3.axisBottom(scaleX).tickSizeInner(-HEIGHT+BORDER*2);
@@ -56,7 +57,9 @@ function buildDom() {
 
     elMain = svg.append('g')
         .attr('class', 'main')
-        .attr('transform', 'translate(' + BORDER + ',' + BORDER + ')');
+        .attr('transform', 'translate(' + BORDER + ',' + BORDER + ')')
+        .call(d3.zoom()
+            .on('zoom', scrollZoom));
 
     elAxisX = elMain.append('g')
         .attr('class', 'axis axis--x')
@@ -66,6 +69,16 @@ function buildDom() {
     elAxisY = elMain.append('g')
         .attr('class', 'axis axis--y')
         .call(axisY);
+
+    elDragZone = elMain.append('rect')
+        .attr('class', 'drag-zone')
+        .attr('width', WIDTH-BORDER*2)
+        .attr('height', HEIGHT-BORDER*2)
+        .attr('clip-path', 'url(#clip)')
+        .call(d3.drag()
+            .on('start', dragStart)
+            .on('drag', dragProgress)
+            .on('end', dragEnd));
 
     elContainer = elMain.append('g')
         .attr('class', 'container')
@@ -79,6 +92,41 @@ function buildDom() {
         .attr('x2', d => scaleX(dateStartAll))
         .attr('y2', d => scaleY.range()[1])
         .style('stroke', 'blue');
+
+    let startDragMouseX = null;
+    let startDragDateStart = null;
+    let startDragDuration = null;
+    let startZoomK = 1;
+
+    function dragStart() {
+        startDragMouseX = d3.mouse(this)[0];
+        
+        const [start, end] = scaleX.domain();
+        startDragDateStart = start;
+        startDragDuration = getDurationBetween(start, end);
+    }
+    function dragProgress() {
+        const [start, end] = scaleX.domain();
+        const newStart = scaleX.invert(-d3.event.dx);
+        let duration = getDurationBetween(start, newStart);
+        
+        updateTimeAxis(getTimePlusDuration(start, duration), getTimePlusDuration(end, duration), 0);
+    }
+    function dragEnd() {
+        startDragMouseX = null;
+        startDragDateStart = null;
+        startDragDuration = null;
+    }
+    function scrollZoom() {
+        if(d3.event.transform.k > startZoomK) {
+            zoom('in');
+        }
+        else if(d3.event.transform.k < startZoomK) {
+            zoom('out');
+        }
+
+        startZoomK = d3.event.transform.k;
+    }
 }
 
 
@@ -88,21 +136,27 @@ function updateData() {
     const exitSessions = updateSessions.exit();
     const enterSessions = updateSessions.enter();
     
-    console.log("exitSessions ", exitSessions.data());
     exitSessions.remove();
+    
+    exitSessions.transition()
+        .duration(500)
+        .attr('opacity', 0);
+
+    const sessionHeight = getClownAxisSessionHeight();
 
     const entry = enterSessions.append('g')
-            .attr('class', 'session')
-            .attr('uniqid', d => 'id'+d.id)
-            .attr('name', d => d.name)
-            .attr('transform', d => `translate(${ scaleX(d.start) }, ${ scaleY(d.name) })`);
+        .attr('class', 'session')
+        .attr('uniqid', d => 'id'+d.id)
+        .attr('name', d => d.name)
+        //.attr('opacity', 0)
+        .attr('transform', d => `translate(${ scaleX(d.start) }, ${ scaleY(d.name) })`);
     
     entry.append('rect')
         .attr('class', 'zone')
         .attr('x', 0)
-        .attr('y', -15)
+        .attr('y', -sessionHeight/2)
         .attr('width', d => scaleX(getEndDate(d.start, d.duration)) - scaleX(d.start))
-        .attr('height', 30)
+        .attr('height', sessionHeight)
         .attr('cursor', 'move')
         .style('fill', d => getColor(d.name))
         .call(d3.drag()
@@ -113,12 +167,12 @@ function updateData() {
     entry.append('rect')
         .attr('class', 'handlerLeft')
         .attr('x', d => -5)
-        .attr('y', d => -15)
+        .attr('y', d => -sessionHeight/2)
         .attr('width', 10)
-        .attr('height', 30)
+        .attr('height', sessionHeight)
         .attr('cursor', 'ew-resize')
         .style('fill', 'grey')
-        .attr('fill-opacity', 0)
+        .attr('fill-opacity', .2)
         .call(d3.drag()
             .on('start', dragLeftStart)
             .on('drag', dragLeftProgress)
@@ -127,17 +181,21 @@ function updateData() {
     entry.append('rect')
             .attr('class', 'handlerRight')
             .attr('x', d => (scaleX(getEndDate(d.start, d.duration)) - scaleX(d.start)) - 5)
-            .attr('y', d => -15)
+            .attr('y', d => -sessionHeight/2)
             .attr('width', 10)
-            .attr('height', 30)
+            .attr('height', sessionHeight)
             .attr('cursor', 'ew-resize')
             .style('fill', 'grey')
-            .attr('fill-opacity', 0)
+            .attr('fill-opacity', .2)
             .call(d3.drag()
                 .on('start', dragRightStart)
                 .on('drag', dragRightProgress)
                 .on('end', dragRightEnd));
 
+    /*entry.transition()
+        .duration(200)
+        .attr('opacity', 1);
+    */
     let startDragMouseX = null;
     let startDragDuration = null;
     let startDragDate = null;
@@ -206,10 +264,6 @@ function updateData() {
         console.log('moveX: ', moveX);
         console.log('currPosX: ', currPosX);
         console.log('newwPosX: ', newPosX);
-        // console.log('curr start: ', startDragDate);
-        // console.log('neew start: ', newStartDate);
-        // console.log('curr duration: ', startDragDuration);
-        // console.log('neew duration: ', newDuration);
         console.groupEnd();
 
         if(false && checkIfTimelineOk(data, newStartDate, newDuration)) {
@@ -311,8 +365,9 @@ function updateSelectionDiv() {
             <div style="background: grey;">
                 <h3>NAME: ${ currentSelectedSession.name } (id=${ currentSelectedSession.id })<br>
                 START: ${ formatDate(currentSelectedSession.start) }<br>
-                END: ${ formatDate(getEndDate(currentSelectedSession.start, currentSelectedSession.duration)) }</h3>
+                END: ${ formatDate(getEndDate(currentSelectedSession.start, currentSelectedSession.duration)) }
                 <button onClick="removeSession(${ currentSelectedSession.id })">REMOVE</button>
+                </h3>
             </div>
         `;
     }
@@ -346,30 +401,35 @@ function addSession(name) {
     const newData = {id: newId, name, start: dateStartAll, duration: 1*60};
     
     const existingClownSessions = data.filter(s => s.name === name);
-    if(existingClownSessions) {
+    if(existingClownSessions.length > 0) {
         const maxSessionEnd = _.max(_.map(existingClownSessions, d => getEndDate(d.start, d.duration).getTime()));
         newData.start = new Date(maxSessionEnd + GAP*1000);
     }
 
     data.push(newData);
     updateData();
-    updateClownAxis();
-
     
+    // update selected session
     elContainer.selectAll('.session')
-        .select('.zone')
-        .classed('active', false);
+    .select('.zone')
+    .classed('active', false);
     
-    // elContainer.selectAll('.session')
-    //     .select('.zone')
-    //     .attr('uniqid', d => `id${newData.id}`)
-    //     .classed('active', true);
     elContainer.selectAll(`.session[uniqid='id${newData.id}']`)
-        .select('.zone')
-        .classed('active', true);
-
+    .select('.zone')
+    .classed('active', true);
+    
     currentSelectedSession = newData;
     updateSelectionDiv();
+    
+    // make sure new one is visible
+    const [start, end] = scaleX.domain();
+    const newOneStart = newData.start;
+    const newOneEnd = getEndDate(newData.start, newData.duration);
+    
+    if(isDateBeforeOther(newOneStart, start) || isDateAfterOther(newOneEnd, end)) {
+        zoomViewAll();
+    }
+    updateClownAxis();
 }
 
 
@@ -418,8 +478,8 @@ function zoomViewAll() {
     }
 }
 
-function updateTimeAxis(start, end) {
-    const trans = d3.transition().ease(d3.easeLinear).duration(200);
+function updateTimeAxis(start, end, animDuration = 200) {
+    const trans = d3.transition().ease(d3.easeLinear).duration(animDuration);
 
     scaleX.domain([start, end]);
     elAxisX.transition(trans).call(axisX);
@@ -447,18 +507,50 @@ function updateTimeAxis(start, end) {
 function updateClownAxis() {
     const trans = d3.transition().ease(d3.easeLinear).duration(200);
 
-    scaleY.domain( _.uniq(_.map(data, 'name')).sort() );
+    scaleY.domain( getUniqClownList() );
     elAxisY.transition(trans).call(axisY);
     
     elContainer.selectAll('.session')
         .transition(trans)
         .attr('transform', d => `translate(${ scaleX(d.start) }, ${ scaleY(d.name) })`);
+    
+
+    const sessionHeight = getClownAxisSessionHeight();
+    
+    elContainer.selectAll('.session')
+        .select('.zone')
+        .transition(trans)
+        .attr('y', -sessionHeight/2)
+        .attr('height', sessionHeight);
+
+    elContainer.selectAll('.session')
+        .select('.handlerLeft')
+        .transition(trans)
+        .attr('y', d => -sessionHeight/2)
+        .attr('height', sessionHeight);
+
+    elContainer.selectAll('.session')
+        .select('.handlerRight')
+        .transition(trans)
+        .attr('y', d => -sessionHeight/2)
+        .attr('height', sessionHeight);
 }
 
 buildDom();
 updateData();
 
 
+
+
+function getUniqClownList() {
+    return _.uniq(_.map(data, 'name')).sort().reverse();
+}
+
+function getClownAxisSessionHeight() {
+    const l = getUniqClownList().length;
+    
+    return Math.ceil((HEIGHT - 2*BORDER) / l) - 4;
+}
 
 ///////////////////////
 ///////////////////////
