@@ -8,35 +8,41 @@
         <div id="chart"></div>
         <hr>
         MOVE
-        <button onclick="move('left')">LEFT</button>
-        <button onclick="move('right')">RIGHT</button>
+        <button onclick="moveAxisX('left')">LEFT</button>
+        <button onclick="moveAxisX('right')">RIGHT</button>
          | ZOOM IN/OUT
-        <button onclick="zoom('in')">IN</button>
-        <button onclick="zoom('out')">OUT</button>
-        <button onclick="zoomViewAll()">VIEW ALL</button>
+        <button onclick="zoomAxisX('in')">IN</button>
+        <button onclick="zoomAxisX('out')">OUT</button>
+        <button onclick="zoomViewAllAxisX()">VIEW ALL</button>
+        <hr>
+        START DATE ALL
+        <button onClick="moveStartDate(-10 * 60)">Less 10 min</button>
+        <button onClick="moveStartDate(10 * 60)">Plus 10 min</button>
+        <span id="startDate"></span>
         <hr>
         ADD
-        <button onClick="addSession('clown A')">clown A</button>
-        <button onClick="addSession('clown B')">clown B</button>
-        <button onClick="addSession('clown C')">clown C</button>
-        <button onClick="addSession('clown D')">clown D</button>
-        <button onClick="addSession('clown E')">clown E</button>
-        <button onClick="addSession('clown F')">clown F</button>
-        <button onClick="addSession('clown X')">clown X</button>
+        <button onClick="addSlot('A')">A</button>
+        <button onClick="addSlot('B')">B</button>
+        <button onClick="addSlot('C')">C</button>
+        <button onClick="addSlot('D')">D</button>
+        <button onClick="addSlot('E')">E</button>
+        <button onClick="addSlot('F')">F</button>
+        <button onClick="addSlot('X')">X</button>
         <hr>
         <div id="selection"></div>
         <hr>
         <p>
             TODO<br>
-            - augment a session from the left.<br>
-            - when dragging quickly to another session, 'stick' it to the session instead of let large space between them.<br>
-            - when add a session, if not visible, extend viewport to view it.<br>
-            - added sessions failed when dragged and could overlap others..<br>
-            ✓ adapt session height compared to clowns number.<br>
+            - augment a slot from the left.<br>
+            - when dragging quickly to another slot, 'stick' it to the slot instead of let large space between them.<br>
+            - when add a slot, if not visible, extend viewport to view it.<br>
+            - added slots failed when dragged and could overlap others..<br>
+            ✓ move startDateAll and update all graph (item with prop startAfter instead of start).<br>
+            ✓ adapt slot height compared to Y items number.<br>
             ✓ allow move on x axis by dragging on graph.<br>
             ✓ improve minute display on x axis (more point+text).<br>
-            ✓ add new session for specific clone > if already line add to it else create new line (update y axis).<br>
-            ✓ have current session highlighted with border and infos elsewhere with NAME/START/STOP and btnRemove.<br>
+            ✓ add new slot for specific Y item > if already line add to it else create new line (update y axis).<br>
+            ✓ have current slot highlighted with border and infos elsewhere with NAME/START/STOP and btnRemove.<br>
         </p>
         <script src="app.js"></script>
         <style>

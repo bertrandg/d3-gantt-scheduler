@@ -7,24 +7,22 @@ const GAP = 60;
 
 let scaleX, scaleY, axisX, axisY;
 let svg, elMain, elDragZone, elContainer, elAxisX, elAxisY, elDateStartAll;
-let currentSelectedSession = null;
+let currentSlot = null;
 
-const dateStartAll = new Date();
+let dateStartAll = new Date();
 dateStartAll.setMinutes(dateStartAll.getMinutes() + 10);
 dateStartAll.setSeconds(0);
+dateStartAll.setMilliseconds(0);
 
-const nowPlusXMinutes = (min) => new Date(dateStartAll.getTime() + min * 1000 * 60);
+document.getElementById('startDate').innerHTML = formatDate(dateStartAll);
 
 let data = [
-    {id: 1, name: 'clown B', start: nowPlusXMinutes(3), duration: 4 * 60},
-    {id: 2, name: 'clown A', start: nowPlusXMinutes(0), duration: 3 * 60},
-    {id: 3, name: 'clown A', start: nowPlusXMinutes(7), duration: 9 * 60},
-    {id: 4, name: 'clown C', start: nowPlusXMinutes(2), duration: 3 * 60},
-    {id: 5, name: 'clown D', start: nowPlusXMinutes(7), duration: 10 * 60},
-    {id: 6, name: 'clown E', start: nowPlusXMinutes(25), duration: 7 * 60},
-    {id: 7, name: 'clown F', start: nowPlusXMinutes(5), duration: 12 * 60},
-    {id: 8, name: 'clown A', start: nowPlusXMinutes(17), duration: 6 * 60},
-    {id: 9, name: 'clown X', start: nowPlusXMinutes(21), duration: 2 * 60},
+    {id: 1, name: 'B', startAfter: 3 * 60, duration: 4 * 60},
+    {id: 2, name: 'A', startAfter: 0 * 60, duration: 3 * 60},
+    {id: 3, name: 'A', startAfter: 7 * 60, duration: 9 * 60},
+    {id: 4, name: 'C', startAfter: 2 * 60, duration: 3 * 60},
+    {id: 5, name: 'D', startAfter: 7 * 60, duration: 10 * 60},
+    {id: 6, name: 'A', startAfter: 18 * 60, duration: 9 * 60},
 ];
 
 
@@ -32,12 +30,12 @@ let data = [
 function buildDom() {
     scaleX = d3.scaleTime()
         .range([0, WIDTH-BORDER*2])
-        .domain([dateStartAll, getTimePlusDuration(dateStartAll, 15*60)]);
+        .domain([dateStartAll, getDatePlusDuration(dateStartAll, 15*60)]);
     
     scaleY = d3.scalePoint()
         .range([HEIGHT-BORDER*2, 0])
         .padding(.5)
-        .domain( getUniqClownList() );
+        .domain( getUniqList() );
     
     
     axisX = d3.axisBottom(scaleX).tickSizeInner(-HEIGHT+BORDER*2);
@@ -76,9 +74,7 @@ function buildDom() {
         .attr('height', HEIGHT-BORDER*2)
         .attr('clip-path', 'url(#clip)')
         .call(d3.drag()
-            .on('start', dragStart)
-            .on('drag', dragProgress)
-            .on('end', dragEnd));
+            .on('drag', dragProgress));
 
     elContainer = elMain.append('g')
         .attr('class', 'container')
@@ -87,76 +83,58 @@ function buildDom() {
     elDateStartAll = elMain.append('line')
         .attr('class', 'dateStartAll')
         .attr('clip-path', 'url(#clip)')
-        .attr('x1', d => scaleX(dateStartAll))
-        .attr('y1', d => scaleY.range()[0])
-        .attr('x2', d => scaleX(dateStartAll))
-        .attr('y2', d => scaleY.range()[1])
+        .attr('x1', scaleX(dateStartAll))
+        .attr('y1', scaleY.range()[0])
+        .attr('x2', scaleX(dateStartAll))
+        .attr('y2', scaleY.range()[1])
         .style('stroke', 'blue');
 
-    let startDragMouseX = null;
-    let startDragDateStart = null;
-    let startDragDuration = null;
     let startZoomK = 1;
 
-    function dragStart() {
-        startDragMouseX = d3.mouse(this)[0];
-        
-        const [start, end] = scaleX.domain();
-        startDragDateStart = start;
-        startDragDuration = getDurationBetween(start, end);
-    }
     function dragProgress() {
         const [start, end] = scaleX.domain();
         const newStart = scaleX.invert(-d3.event.dx);
         let duration = getDurationBetween(start, newStart);
         
-        updateTimeAxis(getTimePlusDuration(start, duration), getTimePlusDuration(end, duration), 0);
-    }
-    function dragEnd() {
-        startDragMouseX = null;
-        startDragDateStart = null;
-        startDragDuration = null;
+        updateAxisX(getDatePlusDuration(start, duration), getDatePlusDuration(end, duration), 0);
     }
     function scrollZoom() {
         if(d3.event.transform.k > startZoomK) {
-            zoom('in');
+            zoomAxisX('in');
         }
         else if(d3.event.transform.k < startZoomK) {
-            zoom('out');
+            zoomAxisX('out');
         }
-
         startZoomK = d3.event.transform.k;
     }
 }
 
 
-
 function updateData() {
-    const updateSessions = elContainer.selectAll('.session').data(data, d => d.id);
-    const exitSessions = updateSessions.exit();
-    const enterSessions = updateSessions.enter();
+    const updateSlots = elContainer.selectAll('.slot').data(data, d => d.id);
+    const exitSlots = updateSlots.exit();
+    const enterSlots = updateSlots.enter();
     
-    exitSessions.remove();
+    exitSlots.remove();
     
-    exitSessions.transition()
+    exitSlots.transition()
         .duration(500)
         .attr('opacity', 0);
 
-    const sessionHeight = getClownAxisSessionHeight();
+    const slotHeight = getSlotHeight();
 
-    const entry = enterSessions.append('g')
-        .attr('class', 'session')
+    const entry = enterSlots.append('g')
+        .attr('class', 'slot')
         .attr('uniqid', d => 'id'+d.id)
         .attr('name', d => d.name)
-        //.attr('opacity', 0)
-        .attr('transform', d => `translate(${ scaleX(d.start) }, ${ scaleY(d.name) })`);
+        .attr('transform', d => `translate(${ scaleX(getStart(d)) }, ${ scaleY(d.name) })`);
     
     entry.append('rect')
         .attr('class', 'zone')
         .attr('x', 0)
-        .attr('y', -sessionHeight/2)
-        .attr('width', d => scaleX(getEndDate(d.start, d.duration)) - scaleX(d.start))
-        .attr('height', sessionHeight)
+        .attr('y', -slotHeight/2)
+        .attr('width', d => scaleX(getEnd(d)) - scaleX(getStart(d)))
+        .attr('height', slotHeight)
         .attr('cursor', 'move')
         .style('fill', d => getColor(d.name))
         .call(d3.drag()
@@ -167,9 +145,9 @@ function updateData() {
     entry.append('rect')
         .attr('class', 'handlerLeft')
         .attr('x', d => -5)
-        .attr('y', d => -sessionHeight/2)
+        .attr('y', d => -slotHeight/2)
         .attr('width', 10)
-        .attr('height', sessionHeight)
+        .attr('height', slotHeight)
         .attr('cursor', 'ew-resize')
         .style('fill', 'grey')
         .attr('fill-opacity', .2)
@@ -180,10 +158,10 @@ function updateData() {
 
     entry.append('rect')
             .attr('class', 'handlerRight')
-            .attr('x', d => (scaleX(getEndDate(d.start, d.duration)) - scaleX(d.start)) - 5)
-            .attr('y', d => -sessionHeight/2)
+            .attr('x', d => (scaleX(getEnd(d)) - scaleX(getStart(d))) - 5)
+            .attr('y', d => -slotHeight/2)
             .attr('width', 10)
-            .attr('height', sessionHeight)
+            .attr('height', slotHeight)
             .attr('cursor', 'ew-resize')
             .style('fill', 'grey')
             .attr('fill-opacity', .2)
@@ -191,11 +169,7 @@ function updateData() {
                 .on('start', dragRightStart)
                 .on('drag', dragRightProgress)
                 .on('end', dragRightEnd));
-
-    /*entry.transition()
-        .duration(200)
-        .attr('opacity', 1);
-    */
+    
     let startDragMouseX = null;
     let startDragDuration = null;
     let startDragDate = null;
@@ -203,58 +177,59 @@ function updateData() {
     ///////////////////////////////////////////
     ///////////////////////////////////////////
 
-    function dragZoneStart(data) {
+    function dragZoneStart(slot) {
         startDragMouseX = d3.mouse(this)[0];
 
-        elContainer.selectAll('.session')
+        elContainer.selectAll('.slot')
             .select('.zone')
             .classed('active', false);
 
         d3.select(this).classed('active', true);
-        currentSelectedSession = data;
+        currentSlot = slot;
         updateSelectionDiv();
     }
     
     // UPDATE START
-    function dragZoneProgress(data) {
+    function dragZoneProgress(slot) {
         const moveX = d3.event.x - startDragMouseX;
-        const currSessionPosPixelX = scaleX(data.start);
-        let newStartDate = scaleX.invert(currSessionPosPixelX + moveX);
-        newStartDate.setSeconds(0);
-        if(isDateBeforeOther(newStartDate, dateStartAll, GAP)) newStartDate = new Date(dateStartAll.getTime());
+
+        const currSlotPosPixelX = scaleX(getStart(slot));
+        const tempStartDate = scaleX.invert(currSlotPosPixelX + moveX);
+        tempStartDate.setSeconds(0);
+        tempStartDate.setMilliseconds(0);
+
+        const newValue = calculateNewValue(slot, tempStartDate, slot.duration, false);
+        slot.startAfter = newValue.startAfter;
+        slot.duration = newValue.duration;
         
-        if(checkIfTimelineOk(data, newStartDate, data.duration)) {
-            data.start = newStartDate;
-            
-            // change g.session translation
-            d3.select(this.parentNode)
-                .attr('transform', `translate(${ scaleX(data.start) }, ${ scaleY(data.name) })`);
-        }
+        // change g.slot translation
+        d3.select(this.parentNode)
+            .attr('transform', `translate(${ scaleX(getStart(slot)) }, ${ scaleY(slot.name) })`);
     }
     
-    function dragZoneEnd(data) {
+    function dragZoneEnd(slot) {
         startDragMouseX = null;
     }
     
     ///////////////////////////////////////////
     ///////////////////////////////////////////
     
-    function dragLeftStart(data) {
+    function dragLeftStart(slot) {
         startDragMouseX = d3.mouse(this)[0];
-        startDragDuration = data.duration;
-        startDragDate = data.start;
+        startDragDuration = slot.duration;
+        startDragDate = getStart(slot);
     }
-    
     // UPDATE START & DURATION
-    function dragLeftProgress(data) {
+    function dragLeftProgress(slot) {
         const moveX = d3.event.x - startDragMouseX;
         const currPosX = scaleX(startDragDate);
         const newPosX = scaleX(startDragDate) + moveX;
 
         const newStartDate = scaleX.invert(newPosX);
         newStartDate.setSeconds(0);
+        newStartDate.setMilliseconds(0);
         
-        const endDate = getEndDate(startDragDate, startDragDuration);
+        const endDate = getDatePlusDuration(startDragDate, startDragDuration);
         let newDuration = (endDate.getTime() - newStartDate.getTime()) / 1000;
         newDuration = Math.round(newDuration / 60) * 60;
         if(newDuration < 60) newDuration = 60;
@@ -266,27 +241,26 @@ function updateData() {
         console.log('newwPosX: ', newPosX);
         console.groupEnd();
 
-        if(false && checkIfTimelineOk(data, newStartDate, newDuration)) {
-            data.start = newStartDate;
-            data.duration = newDuration;
+        if(false && checkIfTimelineOk(slot, newStartDate, newDuration)) {
+            slot.startAfter = getDurationBetween(dateStartAll, newStartDate);
+            slot.duration = newDuration;
 
-            // change g.session translation
+            // change g.slot translation
             d3.select(this.parentNode)
-                .attr('transform', `translate(${ scaleX(data.start) }, ${ scaleY(data.name) })`);
+                .attr('transform', `translate(${ scaleX(getStart(slot)) }, ${ scaleY(slot.name) })`);
 
             // change rect.zone width
             d3.select(this.parentNode)
                 .select('.zone')
-                .attr('width', scaleX(getEndDate(data.start, data.duration)) - scaleX(data.start))
+                .attr('width', scaleX(getEnd(slot)) - scaleX(getStart(slot)))
             
             // change rect.handlerRight x
             d3.select(this.parentNode)
                 .select('.handlerRight')
-                .attr('x', (scaleX(getEndDate(data.start, data.duration)) - scaleX(data.start)) - 5);
+                .attr('x', (scaleX(getEnd(slot)) - scaleX(getStart(slot))) - 5);
         }
     }
-    
-    function dragLeftEnd(data) {
+    function dragLeftEnd(slot) {
         startDragMouseX = null;
         startDragDuration = null;
         startDragDate = null;
@@ -295,49 +269,105 @@ function updateData() {
     ///////////////////////////////////////////
     ///////////////////////////////////////////
     
-    function dragRightStart(data) {
+    function dragRightStart(slot) {
         startDragMouseX = d3.mouse(this)[0];
-        startDragDuration = data.duration;
+        startDragDuration = slot.duration;
     }
-
     // UPDATE DURATION
-    function dragRightProgress(data) {
+    function dragRightProgress(slot) {
         const moveX = d3.event.x - startDragMouseX;
-        const currSessionWidthPixelX = scaleX(getEndDate(data.start, startDragDuration));
+        const currSlotWidthPixelX = scaleX(getDatePlusDuration(getStart(slot), startDragDuration));
         
-        const newEndDate = scaleX.invert(currSessionWidthPixelX + moveX);
-        let newDuration = (newEndDate.getTime() - data.start.getTime()) / 1000;
-        newDuration = Math.round(newDuration / 60) * 60;
-        if(newDuration < 60) newDuration = 60;
-        
-        if(checkIfTimelineOk(data, data.start, newDuration)) {
-            data.duration = newDuration;
+        const tempEndDate = scaleX.invert(currSlotWidthPixelX + moveX);
+        let tempDuration = (tempEndDate.getTime() - getStart(slot).getTime()) / 1000;
+        tempDuration = Math.round(tempDuration / GAP) * GAP;
 
-            // change rect.zone width
-            d3.select(this.parentNode)
-                .select('.zone')
-                .attr('width', scaleX(getEndDate(data.start, data.duration)) - scaleX(data.start))
-            
-            // change rect.handlerRight x
-            d3.select(this.parentNode)
-                .select('.handlerRight')
-                .attr('x', (scaleX(getEndDate(data.start, data.duration)) - scaleX(data.start)) - 5);
-        }
+        const newValue = calculateNewValue(slot, getStart(slot), tempDuration, true);
+        slot.startAfter = newValue.startAfter;
+        slot.duration = newValue.duration;
+
+        // change rect.zone width
+        d3.select(this.parentNode)
+            .select('.zone')
+            .attr('width', scaleX(getEnd(slot)) - scaleX(getStart(slot)))
+        
+        // change rect.handlerRight x
+        d3.select(this.parentNode)
+            .select('.handlerRight')
+            .attr('x', (scaleX(getEnd(slot)) - scaleX(getStart(slot))) - 5);
     }
-    function dragRightEnd(data) {
+    function dragRightEnd(slot) {
         startDragMouseX = null;
         startDragDuration = null;
     }
 }
 
-// Verify if future session position is possible
-function checkIfTimelineOk(dataToCheck, newStart, newDuration) {
-    const newEnd = getEndDate(newStart, newDuration);    
-    const allClownSession = data.filter(d => d.name === dataToCheck.name && d.id !== dataToCheck.id);
+
+function calculateNewValue(slot, tempStart, tempDuration, isResizing = false) {
+    const newValue = {
+        startAfter: getDurationBetween(dateStartAll, tempStart),
+        duration: tempDuration
+    }
+
+    // Move before startDate > replace it to startDate
+    if(isDateBeforeOther(tempStart, dateStartAll)) {
+        newValue.startAfter = 0;
+    }
+
+    // Make sure GAP as minimum
+    if(newValue.duration < GAP) {
+        newValue.duration = GAP;
+    }
+
+    // Check if intersection
+    const commonSlots = data.filter(d => d.name === slot.name && d.id !== slot.id);
+    if(commonSlots.length > 0) {
+        const orderedForbidenSection = commonSlots
+            .map(s => ({start: s.startAfter, end: s.startAfter+s.duration, duration: s.duration, id: s.id}))
+            .sort((a, b) => a.start > b.start ? -1 : 1);
+
+        orderedForbidenSection.forEach(f => {
+            if(isResizing) {
+
+                // Temp START in middle of existing slot
+                if(newValue.startAfter > f.start - GAP && newValue.startAfter < f.end + GAP) {
+                    newValue.duration = slot.duration;
+                }
+                // Temp END in middle of existing slot
+                else if(newValue.startAfter+newValue.duration > f.start - GAP && newValue.startAfter+newValue.duration < f.end + GAP) {
+                    debugger;
+                    newValue.duration = slot.duration;
+                }
+
+            }
+            else {
+
+                // Temp START in middle of existing slot
+                if(newValue.startAfter > f.start - GAP && newValue.startAfter < f.end + GAP) {
+                    newValue.startAfter = f.start - GAP;
+                }
+                // Temp END in middle of existing slot
+                else if(newValue.startAfter+newValue.duration > f.start - GAP && newValue.startAfter+newValue.duration < f.end + GAP) {
+                    newValue.startAfter = f.start - newValue.duration - GAP;
+                }
+
+            }
+        });
+    }
+
+    return newValue;
+}
+
+
+// Verify if future slot position is possible
+function checkIfTimelineOk(slot, newStart, newDuration) {
+    const newEnd = getDatePlusDuration(newStart, newDuration);
+    const commonSlots = data.filter(d => d.name === slot.name && d.id !== slot.id);
+    // console.log("dataToCheck, newStart, newDuration ", dataToCheck, newStart, newDuration);
     
-    const isSessionOverriding = allClownSession.some(s => {
-        const itemStart = s.start;
-        const itemEnd = getEndDate(s.start, s.duration);
+    const isSlotOverriding = commonSlots.some(s => {
+        const itemStart = getStart(s);
+        const itemEnd = getEnd(s);
 
         if( (isDateAfterOther(itemStart, newStart, GAP) && isDateBeforeOther(itemStart, newEnd, GAP)) || 
             (isDateAfterOther(itemEnd, newStart, GAP) && isDateBeforeOther(itemEnd, newEnd, GAP)) || 
@@ -351,99 +381,87 @@ function checkIfTimelineOk(dataToCheck, newStart, newDuration) {
 
     return newDuration >= 60 &&
             (newStart.getTime() === dateStartAll.getTime() || isDateAfterOther(newStart, dateStartAll)) && 
-            (allClownSession.length === 0 || isSessionOverriding === false);
+            (commonSlots.length === 0 || isSlotOverriding === false);
 }
 
 
 
 function updateSelectionDiv() {
-    if(!currentSelectedSession) {
+    if(!currentSlot) {
         document.getElementById('selection').innerHTML = ``;
     }
     else {
         document.getElementById('selection').innerHTML = `
             <div style="background: grey;">
-                <h3>NAME: ${ currentSelectedSession.name } (id=${ currentSelectedSession.id })<br>
-                START: ${ formatDate(currentSelectedSession.start) }<br>
-                END: ${ formatDate(getEndDate(currentSelectedSession.start, currentSelectedSession.duration)) }
-                <button onClick="removeSession(${ currentSelectedSession.id })">REMOVE</button>
+                <h3>NAME: ${ currentSlot.name } (id=${ currentSlot.id })<br>
+                START: ${ formatDate(getStart(currentSlot)) }<br>
+                END: ${ formatDate(getEnd(currentSlot)) }
+                <button onClick="removeSlot(${ currentSlot.id })">REMOVE</button>
                 </h3>
             </div>
         `;
     }
-
-    function formatDate(d) {
-        let h = d.getHours();
-        let m = d.getMinutes();
-        let s = d.getSeconds();
-        
-        if(h < 10) h = "0" + h;
-        if(m < 10) m = "0" + m;
-        if(s < 10) s = "0" + s;
-        
-        return `${ h }:${ m }:${ s }`;
-    }
 }
 
-function removeSession(id) {
+function removeSlot(id) {
     data = data.filter(s => s.id !== id);
     updateData();
-    updateClownAxis();
+    updateAxisY();
 
-    if(currentSelectedSession && currentSelectedSession.id === id) {
-        currentSelectedSession = null;
+    if(currentSlot && currentSlot.id === id) {
+        currentSlot = null;
         updateSelectionDiv();
     }
 }
 
-function addSession(name) {
+function addSlot(name) {
     const newId = (_.max(_.map(data, 'id')) || 1) + 1;
-    const newData = {id: newId, name, start: dateStartAll, duration: 1*60};
+    const newData = {id: newId, name, startAfter: 0, duration: 1*60};
     
-    const existingClownSessions = data.filter(s => s.name === name);
-    if(existingClownSessions.length > 0) {
-        const maxSessionEnd = _.max(_.map(existingClownSessions, d => getEndDate(d.start, d.duration).getTime()));
-        newData.start = new Date(maxSessionEnd + GAP*1000);
+    const commonSlots = data.filter(s => s.name === name);
+    if(commonSlots.length > 0) {
+        const maxSlotEnd = _.max(_.map(commonSlots, d => d.startAfter + d.duration));
+        newData.startAfter = maxSlotEnd + GAP;
     }
 
     data.push(newData);
     updateData();
     
-    // update selected session
-    elContainer.selectAll('.session')
-    .select('.zone')
-    .classed('active', false);
+    // update selected slot
+    elContainer.selectAll('.slot')
+        .select('.zone')
+        .classed('active', false);
     
-    elContainer.selectAll(`.session[uniqid='id${newData.id}']`)
-    .select('.zone')
-    .classed('active', true);
+    elContainer.selectAll(`.slot[uniqid='id${newData.id}']`)
+        .select('.zone')
+        .classed('active', true);
     
-    currentSelectedSession = newData;
+    currentSlot = newData;
     updateSelectionDiv();
     
     // make sure new one is visible
     const [start, end] = scaleX.domain();
-    const newOneStart = newData.start;
-    const newOneEnd = getEndDate(newData.start, newData.duration);
+    const newOneStart = getStart(newData);
+    const newOneEnd = getEnd(newData);
     
     if(isDateBeforeOther(newOneStart, start) || isDateAfterOther(newOneEnd, end)) {
-        zoomViewAll();
+        zoomViewAllAxisX();
     }
-    updateClownAxis();
+    updateAxisY();
 }
 
 
 
-function move(dir) {
+function moveAxisX(dir) {
     const [start, end] = scaleX.domain();
     const newStart = scaleX.invert(WIDTH*.2);
     let duration = getDurationBetween(start, newStart);
     duration = (dir === 'left') ? -duration : duration;
     
-    updateTimeAxis(getTimePlusDuration(start, duration), getTimePlusDuration(end, duration));
+    updateAxisX(getDatePlusDuration(start, duration), getDatePlusDuration(end, duration));
 }
 
-function zoom(dir) {
+function zoomAxisX(dir) {
     const [start, end] = scaleX.domain();
     const durationVisible = getDurationBetween(start, end);
 
@@ -462,41 +480,41 @@ function zoom(dir) {
     }
 
     if(dir === 'in') {
-        updateTimeAxis(getTimePlusDuration(start, diff), getTimePlusDuration(end, -diff));
+        updateAxisX(getDatePlusDuration(start, diff), getDatePlusDuration(end, -diff));
     }
     else if(dir === 'out') {
-        updateTimeAxis(getTimePlusDuration(start, -diff), getTimePlusDuration(end, diff));
+        updateAxisX(getDatePlusDuration(start, -diff), getDatePlusDuration(end, diff));
     }
 }
 
-function zoomViewAll() {
-    const startMin = _.min(_.map(data, d => d.start.getTime()));
-    const endMax = _.max(_.map(data, d => getEndDate(d.start, d.duration).getTime()));
+function zoomViewAllAxisX() {
+    const startMin = _.min(_.map(data, d => getStart(d).getTime()));
+    const endMax = _.max(_.map(data, d => getEnd(d).getTime()));
     
     if(startMin && endMax) {
-        updateTimeAxis(new Date(startMin), new Date(endMax));
+        updateAxisX(new Date(startMin), new Date(endMax));
     }
 }
 
-function updateTimeAxis(start, end, animDuration = 200) {
+function updateAxisX(start, end, animDuration = 200) {
     const trans = d3.transition().ease(d3.easeLinear).duration(animDuration);
 
     scaleX.domain([start, end]);
     elAxisX.transition(trans).call(axisX);
     
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .transition(trans)
-        .attr('transform', d => `translate(${ scaleX(d.start) }, ${ scaleY(d.name) })`);
+        .attr('transform', d => `translate(${ scaleX(getStart(d)) }, ${ scaleY(d.name) })`);
     
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .transition(trans)
         .select('.zone')
-        .attr('width', d => scaleX(getEndDate(d.start, d.duration)) - scaleX(d.start));
+        .attr('width', d => scaleX(getEnd(d)) - scaleX(getStart(d)));
 
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .transition(trans)
         .select('.handlerRight')
-        .attr('x', d => (scaleX(getEndDate(d.start, d.duration)) - scaleX(d.start)) - 5);
+        .attr('x', d => (scaleX(getEnd(d)) - scaleX(getStart(d))) - 5);
         
     elMain.select('.dateStartAll')
         .transition(trans)
@@ -504,60 +522,90 @@ function updateTimeAxis(start, end, animDuration = 200) {
         .attr('x2', d => scaleX(dateStartAll))
 }
 
-function updateClownAxis() {
-    const trans = d3.transition().ease(d3.easeLinear).duration(200);
+function updateAxisY() {
+    const trans = d3.transition()
+        .ease(d3.easeLinear)
+        .duration(200);
 
-    scaleY.domain( getUniqClownList() );
+    scaleY.domain( getUniqList() );
     elAxisY.transition(trans).call(axisY);
     
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .transition(trans)
-        .attr('transform', d => `translate(${ scaleX(d.start) }, ${ scaleY(d.name) })`);
+        .attr('transform', d => `translate(${ scaleX(getStart(d)) }, ${ scaleY(d.name) })`);
     
 
-    const sessionHeight = getClownAxisSessionHeight();
+    const slotHeight = getSlotHeight();
     
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .select('.zone')
         .transition(trans)
-        .attr('y', -sessionHeight/2)
-        .attr('height', sessionHeight);
+        .attr('y', -slotHeight/2)
+        .attr('height', slotHeight);
 
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .select('.handlerLeft')
         .transition(trans)
-        .attr('y', d => -sessionHeight/2)
-        .attr('height', sessionHeight);
+        .attr('y', d => -slotHeight/2)
+        .attr('height', slotHeight);
 
-    elContainer.selectAll('.session')
+    elContainer.selectAll('.slot')
         .select('.handlerRight')
         .transition(trans)
-        .attr('y', d => -sessionHeight/2)
-        .attr('height', sessionHeight);
+        .attr('y', d => -slotHeight/2)
+        .attr('height', slotHeight);
 }
+
+
+function moveStartDate(duration) {
+    updateStartDate(new Date(dateStartAll.getTime() + duration * 1000));
+}
+
+function updateStartDate(date) {
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+
+    const diffDuration = getDurationBetween(dateStartAll, date);
+
+    dateStartAll = date;
+    document.getElementById('startDate').innerHTML = formatDate(dateStartAll);
+    
+    elMain.select('.dateStartAll')
+        .attr('x1', scaleX(dateStartAll))
+        .attr('x2', scaleX(dateStartAll));
+    
+    elContainer.selectAll('.slot')
+        .attr('transform', d => `translate(${ scaleX(getStart(d)) }, ${ scaleY(d.name) })`);
+
+    updateData();
+
+    const [start, end] = scaleX.domain();
+    updateAxisX(getDatePlusDuration(start, diffDuration), getDatePlusDuration(end, diffDuration), 0);
+}
+
+
+
+function getUniqList() {
+    return _.uniq(_.map(data, 'name')).sort().reverse();
+}
+
+function getSlotHeight() {
+    const l = getUniqList().length;
+    
+    return Math.ceil((HEIGHT - 2*BORDER) / l) - 4;
+}
+
 
 buildDom();
 updateData();
 
-
-
-
-function getUniqClownList() {
-    return _.uniq(_.map(data, 'name')).sort().reverse();
-}
-
-function getClownAxisSessionHeight() {
-    const l = getUniqClownList().length;
-    
-    return Math.ceil((HEIGHT - 2*BORDER) / l) - 4;
-}
 
 ///////////////////////
 ///////////////////////
 // Utils function
 
 
-function getTimePlusDuration(date, duration) {
+function getDatePlusDuration(date, duration) {
     return new Date(date.getTime() + duration * 1000);
 }
 
@@ -565,8 +613,12 @@ function getDurationBetween(dateA, dateB) {
     return (dateB.getTime() - dateA.getTime()) / 1000;
 }
 
-function getEndDate(date, duration) {
-    return getTimePlusDuration(date, duration);
+function getStart(slot) {
+    return getDatePlusDuration(dateStartAll, slot.startAfter);
+}
+
+function getEnd(slot) {
+    return getDatePlusDuration(getStart(slot), slot.duration);
 }
 
 function isDateAfterOther(dateA, dateB, gap = 0) {
@@ -577,13 +629,25 @@ function isDateBeforeOther(dateA, dateB, gap = 0) {
     return dateA.getTime() + gap * 1000 < dateB.getTime();
 }
 
+function formatDate(d) {
+    let h = d.getHours();
+    let m = d.getMinutes();
+    let s = d.getSeconds();
+    
+    if(h < 10) h = "0" + h;
+    if(m < 10) m = "0" + m;
+    if(s < 10) s = "0" + s;
+    
+    return `${ h }:${ m }:${ s }+${ d.getMilliseconds() }`;
+}
+
 function getColor(name) {
     switch(name) {
-        case 'clown A': return 'rgba(156,39,176,1)';
-        case 'clown B': return 'rgba(180,12,111,1)';
-        case 'clown C': return 'rgba(75,39,21,1)';
-        case 'clown D': return 'rgba(156,200,176,1)';
-        case 'clown E': return 'rgba(16,39,102,1)';
-        case 'clown F': return 'rgba(222,222,122,1)';
+        case 'A': return 'rgba(156,39,176,1)';
+        case 'B': return 'rgba(180,12,111,1)';
+        case 'C': return 'rgba(75,39,21,1)';
+        case 'D': return 'rgba(156,200,176,1)';
+        case 'E': return 'rgba(16,39,102,1)';
+        case 'F': return 'rgba(222,222,122,1)';
     }
 }
