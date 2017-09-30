@@ -18,11 +18,12 @@ document.getElementById('startDate').innerHTML = formatDate(dateStartAll);
 
 let data = [
     {id: 1, name: 'B', startAfter: 3 * 60, duration: 4 * 60},
-    {id: 2, name: 'A', startAfter: 0 * 60, duration: 3 * 60},
-    {id: 3, name: 'A', startAfter: 7 * 60, duration: 9 * 60},
     {id: 4, name: 'C', startAfter: 2 * 60, duration: 3 * 60},
     {id: 5, name: 'D', startAfter: 7 * 60, duration: 10 * 60},
-    {id: 6, name: 'A', startAfter: 18 * 60, duration: 9 * 60},
+    {id: 2, name: 'A', startAfter: 0 * 60, duration: 3 * 60},
+    {id: 3, name: 'A', startAfter: 4 * 60, duration: 2 * 60},
+    {id: 6, name: 'A', startAfter: 8 * 60, duration: 4 * 60},
+    {id: 7, name: 'A', startAfter: 13 * 60, duration: 2 * 60},
 ];
 
 
@@ -150,7 +151,7 @@ function updateData() {
         .attr('height', slotHeight)
         .attr('cursor', 'ew-resize')
         .style('fill', 'grey')
-        .attr('fill-opacity', .2)
+        .attr('fill-opacity', 0)
         .call(d3.drag()
             .on('start', dragLeftStart)
             .on('drag', dragLeftProgress)
@@ -164,7 +165,7 @@ function updateData() {
             .attr('height', slotHeight)
             .attr('cursor', 'ew-resize')
             .style('fill', 'grey')
-            .attr('fill-opacity', .2)
+            .attr('fill-opacity', 0)
             .call(d3.drag()
                 .on('start', dragRightStart)
                 .on('drag', dragRightProgress)
@@ -180,13 +181,7 @@ function updateData() {
     function dragZoneStart(slot) {
         startDragMouseX = d3.mouse(this)[0];
 
-        elContainer.selectAll('.slot')
-            .select('.zone')
-            .classed('active', false);
-
-        d3.select(this).classed('active', true);
-        currentSlot = slot;
-        updateSelectionDiv();
+        selectSlot(slot.id);
     }
     
     // UPDATE START
@@ -198,13 +193,15 @@ function updateData() {
         tempStartDate.setSeconds(0);
         tempStartDate.setMilliseconds(0);
 
-        const newValue = calculateNewValue(slot, tempStartDate, slot.duration, false);
+        const newValue = calculateNewValue(slot, tempStartDate, slot.duration, 'move');
         slot.startAfter = newValue.startAfter;
         slot.duration = newValue.duration;
         
         // change g.slot translation
         d3.select(this.parentNode)
             .attr('transform', `translate(${ scaleX(getStart(slot)) }, ${ scaleY(slot.name) })`);
+            
+        selectSlot(slot.id);
     }
     
     function dragZoneEnd(slot) {
@@ -215,50 +212,45 @@ function updateData() {
     ///////////////////////////////////////////
     
     function dragLeftStart(slot) {
-        startDragMouseX = d3.mouse(this)[0];
+        startDragMouseX = d3.event.sourceEvent.screenX;
         startDragDuration = slot.duration;
         startDragDate = getStart(slot);
+        
+        selectSlot(slot.id);
     }
     // UPDATE START & DURATION
     function dragLeftProgress(slot) {
-        const moveX = d3.event.x - startDragMouseX;
+        const moveX = d3.event.sourceEvent.screenX - startDragMouseX;
         const currPosX = scaleX(startDragDate);
         const newPosX = scaleX(startDragDate) + moveX;
 
-        const newStartDate = scaleX.invert(newPosX);
-        newStartDate.setSeconds(0);
-        newStartDate.setMilliseconds(0);
+        const tempStartDate = scaleX.invert(newPosX);
+        tempStartDate.setSeconds(0);
+        tempStartDate.setMilliseconds(0);
         
         const endDate = getDatePlusDuration(startDragDate, startDragDuration);
-        let newDuration = (endDate.getTime() - newStartDate.getTime()) / 1000;
-        newDuration = Math.round(newDuration / 60) * 60;
-        if(newDuration < 60) newDuration = 60;
+        let tempDuration = (endDate.getTime() - tempStartDate.getTime()) / 1000;
+        tempDuration = Math.round(tempDuration / GAP) * GAP;
+        
+        const newValue = calculateNewValue(slot, tempStartDate, tempDuration, 'left');
+        slot.startAfter = newValue.startAfter;
+        slot.duration = newValue.duration;
 
-        console.group('PROGRESS');
-        console.log('d3.event.x: ', d3.event.x);
-        console.log('moveX: ', moveX);
-        console.log('currPosX: ', currPosX);
-        console.log('newwPosX: ', newPosX);
-        console.groupEnd();
+        // change g.slot translation
+        d3.select(this.parentNode)
+            .attr('transform', `translate(${ scaleX(getStart(slot)) }, ${ scaleY(slot.name) })`);
 
-        if(false && checkIfTimelineOk(slot, newStartDate, newDuration)) {
-            slot.startAfter = getDurationBetween(dateStartAll, newStartDate);
-            slot.duration = newDuration;
-
-            // change g.slot translation
-            d3.select(this.parentNode)
-                .attr('transform', `translate(${ scaleX(getStart(slot)) }, ${ scaleY(slot.name) })`);
-
-            // change rect.zone width
-            d3.select(this.parentNode)
-                .select('.zone')
-                .attr('width', scaleX(getEnd(slot)) - scaleX(getStart(slot)))
-            
-            // change rect.handlerRight x
-            d3.select(this.parentNode)
-                .select('.handlerRight')
-                .attr('x', (scaleX(getEnd(slot)) - scaleX(getStart(slot))) - 5);
-        }
+        // change rect.zone width
+        d3.select(this.parentNode)
+            .select('.zone')
+            .attr('width', scaleX(getEnd(slot)) - scaleX(getStart(slot)))
+        
+        // change rect.handlerRight x
+        d3.select(this.parentNode)
+            .select('.handlerRight')
+            .attr('x', (scaleX(getEnd(slot)) - scaleX(getStart(slot))) - 5);
+        
+        selectSlot(slot.id);
     }
     function dragLeftEnd(slot) {
         startDragMouseX = null;
@@ -272,6 +264,8 @@ function updateData() {
     function dragRightStart(slot) {
         startDragMouseX = d3.mouse(this)[0];
         startDragDuration = slot.duration;
+        
+        selectSlot(slot.id);
     }
     // UPDATE DURATION
     function dragRightProgress(slot) {
@@ -282,7 +276,7 @@ function updateData() {
         let tempDuration = (tempEndDate.getTime() - getStart(slot).getTime()) / 1000;
         tempDuration = Math.round(tempDuration / GAP) * GAP;
 
-        const newValue = calculateNewValue(slot, getStart(slot), tempDuration, true);
+        const newValue = calculateNewValue(slot, getStart(slot), tempDuration, 'right');
         slot.startAfter = newValue.startAfter;
         slot.duration = newValue.duration;
 
@@ -295,6 +289,8 @@ function updateData() {
         d3.select(this.parentNode)
             .select('.handlerRight')
             .attr('x', (scaleX(getEnd(slot)) - scaleX(getStart(slot))) - 5);
+            
+        selectSlot(slot.id);
     }
     function dragRightEnd(slot) {
         startDragMouseX = null;
@@ -303,15 +299,10 @@ function updateData() {
 }
 
 
-function calculateNewValue(slot, tempStart, tempDuration, isResizing = false) {
+function calculateNewValue(slot, tempStart, tempDuration, action) {
     const newValue = {
         startAfter: getDurationBetween(dateStartAll, tempStart),
         duration: tempDuration
-    }
-
-    // Move before startDate > replace it to startDate
-    if(isDateBeforeOther(tempStart, dateStartAll)) {
-        newValue.startAfter = 0;
     }
 
     // Make sure GAP as minimum
@@ -319,78 +310,93 @@ function calculateNewValue(slot, tempStart, tempDuration, isResizing = false) {
         newValue.duration = GAP;
     }
 
+    let startMin = 0;
+    let endMax = null;
+
     // Check if intersection
     const commonSlots = data.filter(d => d.name === slot.name && d.id !== slot.id);
     if(commonSlots.length > 0) {
-        const orderedForbidenSection = commonSlots
+        const orderedCommonSlots = commonSlots
             .map(s => ({start: s.startAfter, end: s.startAfter+s.duration, duration: s.duration, id: s.id}))
-            .sort((a, b) => a.start > b.start ? -1 : 1);
+            .sort((a, b) => a.start < b.start ? -1 : 1);
+        
+        // DETERMINE IF SLOT IS:
+        const tabSlotFirst = orderedCommonSlots[0];
+        const tabSlotLast = orderedCommonSlots[orderedCommonSlots.length-1];
+        
+        // BEFORE ALL > endMax = startFirst - GAP
+        if(slot.startAfter + slot.duration <= tabSlotFirst.start - GAP) {
+            endMax = tabSlotFirst.start - GAP;
+            console.log('BEFORE ALL > endMax = ', endMax);
+        }
+        // AFTER ALL > startMin = endLast + GAP
+        else if(slot.startAfter >= tabSlotLast.start + tabSlotLast.duration + GAP) {
+            startMin = tabSlotLast.start + tabSlotLast.duration + GAP;
+            console.log('AFTER ALL > startMin = ', startMin);
+        }
+        // BETWEEN 2 > startMin = endA + GAP && endMax = startB - GAP
+        else {
+            for(let i = 0; i < orderedCommonSlots.length; i++) {
+                const tabSlotA = orderedCommonSlots[i];
+                const tabSlotB = orderedCommonSlots[i+1];
 
-        orderedForbidenSection.forEach(f => {
-            if(isResizing) {
-
-                // Temp START in middle of existing slot
-                if(newValue.startAfter > f.start - GAP && newValue.startAfter < f.end + GAP) {
-                    newValue.duration = slot.duration;
+                if(slot.startAfter >= tabSlotA.start + tabSlotA.duration + GAP) {
+                    startMin = tabSlotA.start + tabSlotA.duration + GAP;
+                    
+                    if(tabSlotB && slot.startAfter + slot.duration <= tabSlotB.start - GAP) {
+                        endMax = tabSlotB.start - GAP;
+                        break;
+                    }
                 }
-                // Temp END in middle of existing slot
-                else if(newValue.startAfter+newValue.duration > f.start - GAP && newValue.startAfter+newValue.duration < f.end + GAP) {
-                    debugger;
-                    newValue.duration = slot.duration;
-                }
-
             }
-            else {
+            console.log('BETWEEN 2 > startMin = ', startMin, ' > endMax = ', endMax);
+        }
+    }
 
-                // Temp START in middle of existing slot
-                if(newValue.startAfter > f.start - GAP && newValue.startAfter < f.end + GAP) {
-                    newValue.startAfter = f.start - GAP;
-                }
-                // Temp END in middle of existing slot
-                else if(newValue.startAfter+newValue.duration > f.start - GAP && newValue.startAfter+newValue.duration < f.end + GAP) {
-                    newValue.startAfter = f.start - newValue.duration - GAP;
-                }
+    if(action === 'move') {
+        if(newValue.startAfter < startMin) {
+            newValue.startAfter = startMin;
+        }
+        if(endMax && newValue.startAfter + newValue.duration > endMax) {
+            newValue.startAfter = endMax - newValue.duration;
+        }
+    }
+    else if(action === 'left') {
+        if(newValue.startAfter < startMin) {
+            newValue.startAfter = startMin;
+            newValue.duration = slot.duration;
+        }
+        else if(newValue.startAfter >= slot.startAfter + slot.duration) {
+            newValue.startAfter = slot.startAfter + slot.duration - GAP;
+        }
+    }
+    else if(action === 'right') {
+        if(endMax && newValue.startAfter + newValue.duration > endMax) {
+            newValue.duration = endMax - newValue.startAfter;
+        }
 
-            }
-        });
     }
 
     return newValue;
 }
 
 
-// Verify if future slot position is possible
-function checkIfTimelineOk(slot, newStart, newDuration) {
-    const newEnd = getDatePlusDuration(newStart, newDuration);
-    const commonSlots = data.filter(d => d.name === slot.name && d.id !== slot.id);
-    // console.log("dataToCheck, newStart, newDuration ", dataToCheck, newStart, newDuration);
-    
-    const isSlotOverriding = commonSlots.some(s => {
-        const itemStart = getStart(s);
-        const itemEnd = getEnd(s);
 
-        if( (isDateAfterOther(itemStart, newStart, GAP) && isDateBeforeOther(itemStart, newEnd, GAP)) || 
-            (isDateAfterOther(itemEnd, newStart, GAP) && isDateBeforeOther(itemEnd, newEnd, GAP)) || 
-            (isDateAfterOther(newStart, itemStart, GAP) && isDateBeforeOther(newStart, itemEnd, GAP)) || 
-            (isDateAfterOther(newEnd, itemStart, GAP) && isDateBeforeOther(newEnd, itemEnd, GAP)) )
-        {
-            return true;
-        }
-        return false;
-    });
+function selectSlot(id) {
+    const slot = data.find(s => s.id == id);
 
-    return newDuration >= 60 &&
-            (newStart.getTime() === dateStartAll.getTime() || isDateAfterOther(newStart, dateStartAll)) && 
-            (commonSlots.length === 0 || isSlotOverriding === false);
-}
+    // Unselect all slot
+    elContainer.selectAll('.slot')
+        .select('.zone')
+        .classed('active', false);
+        
+    if(slot) {
+        currentSlot = slot;
 
-
-
-function updateSelectionDiv() {
-    if(!currentSlot) {
-        document.getElementById('selection').innerHTML = ``;
-    }
-    else {
+        elContainer.selectAll(`.slot[uniqid='id${ slot.id }']`)
+            .select('.zone')
+            .classed('active', true);
+        
         document.getElementById('selection').innerHTML = `
             <div style="background: grey;">
                 <h3>NAME: ${ currentSlot.name } (id=${ currentSlot.id })<br>
@@ -398,8 +404,12 @@ function updateSelectionDiv() {
                 END: ${ formatDate(getEnd(currentSlot)) }
                 <button onClick="removeSlot(${ currentSlot.id })">REMOVE</button>
                 </h3>
-            </div>
-        `;
+            </div>`;
+    }
+    else {
+        currentSlot = null;
+
+        document.getElementById('selection').innerHTML = ``;
     }
 }
 
@@ -409,8 +419,7 @@ function removeSlot(id) {
     updateAxisY();
 
     if(currentSlot && currentSlot.id === id) {
-        currentSlot = null;
-        updateSelectionDiv();
+        selectSlot(-1);
     }
 }
 
@@ -428,16 +437,7 @@ function addSlot(name) {
     updateData();
     
     // update selected slot
-    elContainer.selectAll('.slot')
-        .select('.zone')
-        .classed('active', false);
-    
-    elContainer.selectAll(`.slot[uniqid='id${newData.id}']`)
-        .select('.zone')
-        .classed('active', true);
-    
-    currentSlot = newData;
-    updateSelectionDiv();
+    selectSlot(newData.id);
     
     // make sure new one is visible
     const [start, end] = scaleX.domain();
@@ -445,7 +445,7 @@ function addSlot(name) {
     const newOneEnd = getEnd(newData);
     
     if(isDateBeforeOther(newOneStart, start) || isDateAfterOther(newOneEnd, end)) {
-        zoomViewAllAxisX();
+        zoomViewAllAxisX(0);
     }
     updateAxisY();
 }
@@ -487,12 +487,12 @@ function zoomAxisX(dir) {
     }
 }
 
-function zoomViewAllAxisX() {
+function zoomViewAllAxisX(animDuration = 200) {
     const startMin = _.min(_.map(data, d => getStart(d).getTime()));
     const endMax = _.max(_.map(data, d => getEnd(d).getTime()));
     
     if(startMin && endMax) {
-        updateAxisX(new Date(startMin), new Date(endMax));
+        updateAxisX(new Date(startMin), new Date(endMax), animDuration);
     }
 }
 
@@ -581,6 +581,10 @@ function updateStartDate(date) {
 
     const [start, end] = scaleX.domain();
     updateAxisX(getDatePlusDuration(start, diffDuration), getDatePlusDuration(end, diffDuration), 0);
+    
+    if(currentSlot) {
+        selectSlot(currentSlot.id);
+    }
 }
 
 
