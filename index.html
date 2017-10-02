@@ -17,23 +17,28 @@
          | Or use <b>click+move</b> & <b>mousewheel</b> directly on graph.
         <hr>
         <b>START DATE ALL:</b> MOVE 
-        <button onClick="moveStartDate(-10 * 60)">Less 10 min</button>
-        <button onClick="moveStartDate(10 * 60)">Plus 10 min</button>
+        <button onClick="moveStartDate(-10 * 60)">-10 MIN</button>
+        <button onClick="moveStartDate(10 * 60)">+10 MIN</button>
          | current = <span id="startDate"></span>
-        <hr>
-        <b>SLOT:</b> ADD
-        <button onClick="addSlot('A')">A</button>
-        <button onClick="addSlot('B')">B</button>
-        <button onClick="addSlot('C')">C</button>
-        <button onClick="addSlot('D')">D</button>
-        <button onClick="addSlot('E')">E</button>
-        <button onClick="addSlot('F')">F</button>
-        <button onClick="addSlot('X')">X</button>
+         <hr>
+         <b>SLOT:</b>
+         <button onClick="buildAutoSlot()">BUILD AUTO</button> | 
+         <button onClick="removeAllSlot()">REMOVE ALL</button> Or <b>double click</b> on slot to remove it. | ADD
+         <button onClick="addSlot('A')">A</button>
+         <button onClick="addSlot('B')">B</button>
+         <button onClick="addSlot('C')">C</button>
+         <button onClick="addSlot('D')">D</button>
+         <button onClick="addSlot('E')">E</button>
+         <button onClick="addSlot('F')">F</button>
+         <button onClick="addSlot('X')">X</button>
         <hr>
         <div id="selection"></div>
         <hr>
         <p>
             TODO<br>
+            ✓ add rect inside slot to bind removeSlot() on click / or just use dblclick.<br>
+            ✓ add button to 'buils auto' all slots.<br>
+            - find a way to 'scroll' horizontally when too many items on Y axis to be visible.<br>
             ✓ augment a slot from the left properly.<br>
             ✓ when dragging quickly to another slot, 'stick' it to the slot instead of let large space between them.<br>
             ✓ when add a slot, if not visible, extend viewport to view it.<br>
@@ -52,6 +57,9 @@
             }
             .tick line{
                 opacity: 0.2;
+            }
+            .dateStartAll {
+                stroke: green;
             }
             .zone.active {
                 stroke: blue;

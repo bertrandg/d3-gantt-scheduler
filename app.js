@@ -1,7 +1,7 @@
 //@ts-check
 
-const WIDTH = 800;
-const HEIGHT = 400;
+const WIDTH = 1200;
+const HEIGHT = 500;
 const BORDER = 50;
 const GAP = 60;
 
@@ -58,7 +58,8 @@ function buildDom() {
         .attr('class', 'main')
         .attr('transform', 'translate(' + BORDER + ',' + BORDER + ')')
         .call(d3.zoom()
-            .on('zoom', scrollZoom));
+            .on('zoom', scrollZoom))
+        .on("dblclick.zoom", null);
 
     elAxisX = elMain.append('g')
         .attr('class', 'axis axis--x')
@@ -87,8 +88,7 @@ function buildDom() {
         .attr('x1', scaleX(dateStartAll))
         .attr('y1', scaleY.range()[0])
         .attr('x2', scaleX(dateStartAll))
-        .attr('y2', scaleY.range()[1])
-        .style('stroke', 'blue');
+        .attr('y2', scaleY.range()[1]);
 
     let startZoomK = 1;
 
@@ -100,6 +100,7 @@ function buildDom() {
         updateAxisX(getDatePlusDuration(start, duration), getDatePlusDuration(end, duration), 0);
     }
     function scrollZoom() {
+ console.log("scrollZoom ");
         if(d3.event.transform.k > startZoomK) {
             zoomAxisX('in');
         }
@@ -138,6 +139,7 @@ function updateData() {
         .attr('height', slotHeight)
         .attr('cursor', 'move')
         .style('fill', d => getColor(d.name))
+        .on('dblclick', zoneDblClick)
         .call(d3.drag()
             .on('start', dragZoneStart)
             .on('drag', dragZoneProgress)
@@ -174,6 +176,15 @@ function updateData() {
     let startDragMouseX = null;
     let startDragDuration = null;
     let startDragDate = null;
+    
+    ///////////////////////////////////////////
+    ///////////////////////////////////////////
+
+    function zoneDblClick(slot) {
+ console.log("slot ", slot);
+
+        removeSlot(slot.id);
+    }
     
     ///////////////////////////////////////////
     ///////////////////////////////////////////
@@ -453,6 +464,35 @@ function addSlot(name) {
     updateAxisY();
 }
 
+function removeAllSlot() {
+    data = [];
+
+    updateData();
+    selectSlot(-1);
+    updateAxisY();
+}
+
+function buildAutoSlot() {
+    const list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'X'];
+
+    const tempData = [];
+    list.forEach((name, i) => {
+        tempData.push({
+            id: i+1,
+            name: name,
+            startAfter: i*GAP*2,
+            duration: GAP
+        });
+    });
+
+    data = tempData;
+
+    updateData();
+    selectSlot(-1);
+    zoomViewAllAxisX(0);
+    updateAxisY();
+}
+
 
 
 function moveAxisX(dir) {
@@ -471,7 +511,7 @@ function zoomAxisX(dir) {
     let diff = 2*60;
     switch(true) {
         // less 15min visible > move 1min each side if unzoom
-        case durationVisible <= 15*60:      diff = (dir === 'out') ? 1*60 : 0;      break;
+        case durationVisible <= 10*60:      diff = (dir === 'out') ? 1*60 : 0;      break;
         // less 30min visible > move 1min each side
         case durationVisible <= 30*60:      diff = 1*60;                            break;
         // less 1hour visible > move 4min each side
@@ -599,7 +639,7 @@ function getUniqList() {
 function getSlotHeight() {
     const l = getUniqList().length;
     
-    return Math.ceil((HEIGHT - 2*BORDER) / l) - 4;
+    return Math.ceil((HEIGHT - 2*BORDER) / l) - (l>10 ? 0 : 4);
 }
 
 
