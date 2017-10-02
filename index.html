@@ -7,20 +7,21 @@
     <body>
         <div id="chart"></div>
         <hr>
-        MOVE
+        <b>TIMELINE:</b> MOVE 
         <button onclick="moveAxisX('left')">LEFT</button>
         <button onclick="moveAxisX('right')">RIGHT</button>
          | ZOOM IN/OUT
         <button onclick="zoomAxisX('in')">IN</button>
         <button onclick="zoomAxisX('out')">OUT</button>
         <button onclick="zoomViewAllAxisX()">VIEW ALL</button>
+         | Or use <b>click+move</b> & <b>mousewheel</b> directly on graph.
         <hr>
-        START DATE ALL
+        <b>START DATE ALL:</b> MOVE 
         <button onClick="moveStartDate(-10 * 60)">Less 10 min</button>
         <button onClick="moveStartDate(10 * 60)">Plus 10 min</button>
-        <span id="startDate"></span>
+         | current = <span id="startDate"></span>
         <hr>
-        ADD
+        <b>SLOT:</b> ADD
         <button onClick="addSlot('A')">A</button>
         <button onClick="addSlot('B')">B</button>
         <button onClick="addSlot('C')">C</button>

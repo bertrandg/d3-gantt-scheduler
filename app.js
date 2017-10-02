@@ -324,15 +324,15 @@ function calculateNewValue(slot, tempStart, tempDuration, action) {
         const tabSlotFirst = orderedCommonSlots[0];
         const tabSlotLast = orderedCommonSlots[orderedCommonSlots.length-1];
         
-        // BEFORE ALL > endMax = startFirst - GAP
+        // BEFORE ALL SLOTS > endMax = startFirst - GAP
         if(slot.startAfter + slot.duration <= tabSlotFirst.start - GAP) {
             endMax = tabSlotFirst.start - GAP;
-            console.log('BEFORE ALL > endMax = ', endMax);
+            // console.log('BEFORE ALL > endMax = ', endMax);
         }
-        // AFTER ALL > startMin = endLast + GAP
+        // AFTER ALL SLOTS > startMin = endLast + GAP
         else if(slot.startAfter >= tabSlotLast.start + tabSlotLast.duration + GAP) {
             startMin = tabSlotLast.start + tabSlotLast.duration + GAP;
-            console.log('AFTER ALL > startMin = ', startMin);
+            // console.log('AFTER ALL > startMin = ', startMin);
         }
         // BETWEEN 2 > startMin = endA + GAP && endMax = startB - GAP
         else {
@@ -349,7 +349,7 @@ function calculateNewValue(slot, tempStart, tempDuration, action) {
                     }
                 }
             }
-            console.log('BETWEEN 2 > startMin = ', startMin, ' > endMax = ', endMax);
+            //console.log('BETWEEN 2 SLOTS > startMin = ', startMin, ' > endMax = ', endMax);
         }
     }
 
@@ -364,7 +364,10 @@ function calculateNewValue(slot, tempStart, tempDuration, action) {
     else if(action === 'left') {
         if(newValue.startAfter < startMin) {
             newValue.startAfter = startMin;
-            newValue.duration = slot.duration;
+
+            // Be sure to keep current end
+            const currEnd = slot.startAfter + slot.duration;
+            newValue.duration = currEnd - newValue.startAfter;
         }
         else if(newValue.startAfter >= slot.startAfter + slot.duration) {
             newValue.startAfter = slot.startAfter + slot.duration - GAP;
