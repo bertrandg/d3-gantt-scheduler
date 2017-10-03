@@ -100,7 +100,6 @@ function buildDom() {
         updateAxisX(getDatePlusDuration(start, duration), getDatePlusDuration(end, duration), 0);
     }
     function scrollZoom() {
- console.log("scrollZoom ");
         if(d3.event.transform.k > startZoomK) {
             zoomAxisX('in');
         }
@@ -181,8 +180,6 @@ function updateData() {
     ///////////////////////////////////////////
 
     function zoneDblClick(slot) {
- console.log("slot ", slot);
-
         removeSlot(slot.id);
     }
     
@@ -223,7 +220,13 @@ function updateData() {
     ///////////////////////////////////////////
     
     function dragLeftStart(slot) {
-        startDragMouseX = d3.event.sourceEvent.screenX;
+        if(d3.event.sourceEvent.screenX) {
+            startDragMouseX = d3.event.sourceEvent.screenX;
+        }
+        else if(d3.event.sourceEvent.touches && d3.event.sourceEvent.touches[0]) {
+            startDragMouseX = d3.event.sourceEvent.touches[0].screenX;
+        }
+
         startDragDuration = slot.duration;
         startDragDate = getStart(slot);
         
@@ -231,7 +234,14 @@ function updateData() {
     }
     // UPDATE START & DURATION
     function dragLeftProgress(slot) {
-        const moveX = d3.event.sourceEvent.screenX - startDragMouseX;
+        let moveX = d3.event.sourceEvent.screenX - startDragMouseX;
+        if(d3.event.sourceEvent.screenX) {
+            moveX = d3.event.sourceEvent.screenX - startDragMouseX;
+        }
+        else if(d3.event.sourceEvent.touches && d3.event.sourceEvent.touches[0]) {
+            moveX = d3.event.sourceEvent.touches[0].screenX - startDragMouseX;
+        }
+        
         const currPosX = scaleX(startDragDate);
         const newPosX = scaleX(startDragDate) + moveX;
 
@@ -360,7 +370,7 @@ function calculateNewValue(slot, tempStart, tempDuration, action) {
                     }
                 }
             }
-            //console.log('BETWEEN 2 SLOTS > startMin = ', startMin, ' > endMax = ', endMax);
+            // console.log('BETWEEN 2 SLOTS > startMin = ', startMin, ' > endMax = ', endMax);
         }
     }
 
