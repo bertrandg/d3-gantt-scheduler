@@ -7,3 +7,5 @@ Demo where you can:
 - Timeslots are relative to a start date which could be changed on the fly.
 - Shift timeline by 'click & move' and zoom/unzoom using mouse wheel (or with bottom buttons).  
 - 'Auto build' button to add one timeslot of one minute per task spaced by a minute. 
+
+[https://bertrandg.github.io/d3-gantt-scheduler/](https://bertrandg.github.io/d3-gantt-scheduler/)
