@@ -8,3 +8,5 @@ Demo where you can:
 - 'Auto build' button to add one timeslot of one minute per task spaced by a minute. 
 
 [https://bertrandg.github.io/d3-gantt-scheduler/](https://bertrandg.github.io/d3-gantt-scheduler/)
+
+<img width="1167" alt="image" src="https://user-images.githubusercontent.com/7031941/167712060-a73ee6c9-ec75-48fb-a053-e0ec2d4aa63a.png">
